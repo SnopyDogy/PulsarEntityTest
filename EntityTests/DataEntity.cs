@@ -78,8 +78,6 @@ namespace EntityTests
     }
 
 
-
-
     class TestEntity : DataEntity
     {
         // so it will compile:

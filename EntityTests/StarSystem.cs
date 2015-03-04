@@ -38,8 +38,6 @@ namespace EntityTests
 
         // master list of entites, mainly used to controll assignment of Ids.
         public List<DataEntity> AllEntities = new List<DataEntity>();      
-       // public List<RuinsDB> Ruins = new List<RuinsDB>();
-       // public List<TemperatureDB> Temperatures = new List<TemperatureDB>();
 
         public Guid Id
         {
@@ -112,11 +110,6 @@ namespace EntityTests
                     GetDataBlobIList(i).Add(entity.Owner.GetDataBlobIList(i)[entity.DataBlobsIndex]);
                 }
 
-                    // there is no free space, add to the end:
-                    //Ruins.Add(entity.Owner.GetDataBlobList<List<RuinsDB>>(DataBlobIndex.RuinsDB)[entity.ComponentIndex]);
-                // Temperatures.Add(entity.Owner.GetDataBlobList<List<TemperatureDB>>(DataBlobIndex.TemperatureDB)[entity.ComponentIndex]);
-                //... and so on for all component types???
-
                 entity.DataBlobsIndex = AllEntities.Count - 1;
             }
             else
@@ -126,9 +119,6 @@ namespace EntityTests
                     GetDataBlobIList(i)[newIndex] = entity.Owner.GetDataBlobIList(i)[entity.DataBlobsIndex];
                     entity.Owner.GetDataBlobIList(i)[entity.DataBlobsIndex] = null; // signal unused
                 }
-                // add to specified index:
-                //Ruins[newIndex] = entity.Owner.Ruins[entity.ComponentIndex];
-                //Temperatures[newIndex] = entity.Owner.Temperatures[entity.ComponentIndex];
 
                 entity.DataBlobsIndex = newIndex;
             }
