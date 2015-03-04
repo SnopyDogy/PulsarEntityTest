@@ -11,7 +11,7 @@ namespace EntityTests
 {
     class DataEntity : ISerializable
     {
-        public BitArray Componments = new BitArray(2);
+        public BitArray DataBlobs = new BitArray(2);
 
         public string Name
         {
@@ -25,7 +25,7 @@ namespace EntityTests
             set;
         }
 
-        public int ComponentIndex
+        public int DataBlobsIndex
         {
             get;
             set;
@@ -52,12 +52,15 @@ namespace EntityTests
 
             // Use the Id of the star system to lookup our owner:
             Guid ownerID = (Guid)info.GetValue("OwnerID", typeof(Guid));
-            foreach(var starSystem in GameState.StarSystems)
+            if (ownerID != Guid.Empty)  // only look if we have a vlaid owner:
             {
-                if (starSystem.Id == ownerID)
+                foreach(var starSystem in GameState.StarSystems)
                 {
-                    Owner = starSystem;
-                    break;
+                    if (starSystem.Id == ownerID)
+                    {
+                        Owner = starSystem;
+                        break;
+                    }
                 }
             }
         }
@@ -65,8 +68,12 @@ namespace EntityTests
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("ID", Id, typeof(Guid));
-            info.AddValue("Name", Name, typeof(RuinsComponent));
-            info.AddValue("OwnerID", Owner.Id, typeof(Guid));
+            info.AddValue("Name", Name, typeof(RuinsDB));
+
+            if (Owner != null)
+                info.AddValue("OwnerID", Owner.Id, typeof(Guid));
+            else
+                info.AddValue("OwnerID", Guid.Empty, typeof(Guid));
         }
     }
 
@@ -75,33 +82,44 @@ namespace EntityTests
 
     class TestEntity : DataEntity
     {
-        //public RuinsComponent _ruins;
-        //public RuinsComponent Ruins
-        //{
-         //   get { return _ruins; }
-         //   set { _ruins = value; }
-        //}
-
         // so it will compile:
         public TestEntity() 
             : base()
         {
             // init components:
-            Componments.Set((int)ComponentFields.RuinsComponent, true);
-            Componments.Set((int)ComponentFields.TemperatureComponent, false);
+            DataBlobs.Set((int)DataBlobIndex.RuinsDB, true);
+
+
+            DataBlobs.Set((int)DataBlobIndex.TemperatureDB, false);
         }
 
         public TestEntity(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            //_ruins = (RuinsComponent)info.GetValue("Ruins", typeof(RuinsComponent));
-            Owner.Ruins[ComponentIndex] = (RuinsComponent)info.GetValue("Ruins", typeof(RuinsComponent));
+            try 
+            { 
+                Owner.GetDataBlobList<List<RuinsDB>>(DataBlobIndex.RuinsDB)[DataBlobsIndex] = (RuinsDB)info.GetValue("Ruins", typeof(RuinsDB));
+            }
+            catch (System.NullReferenceException e)
+            {
+                throw new System.NullReferenceException("Cannot load Data Blob, no valid star system, or some other value was null!");
+            }
+            catch(System.Runtime.Serialization.SerializationException e)
+            {
+                // one or more values faild to load, log it here.
+            }
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-            info.AddValue("Ruins", Owner.Ruins[ComponentIndex], typeof(RuinsComponent));
+
+            if (Owner != null)
+            {
+                RuinsDB ruins = Owner.GetDataBlobList<List<RuinsDB>>(DataBlobIndex.RuinsDB)[DataBlobsIndex];
+                if (ruins != null)
+                    info.AddValue("Ruins", ruins, typeof(RuinsDB));
+            }
         }
     }
 }

@@ -4,54 +4,101 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.Serialization;
+using System.ComponentModel.Design;
+using System.Collections;
 
 namespace EntityTests
 {
-    class StarSystem : DataEntity
+    class StarSystem : ISerializable
     {
-        public List<DataEntity> AllEntities = new List<DataEntity>();      // master list of entites, mainly used to controll assignment of Ids.
-        public List<RuinsComponent> Ruins = new List<RuinsComponent>();
-        public List<TemperatureComponent> Temperatures = new List<TemperatureComponent>();
+        // This list stores one list for each type of data blob:
+        private ArrayList _dataBlobLists = new ArrayList()
+        {
+            { new List<RuinsDB>() },
+            { new List<TemperatureDB>() }
+        };
+
+        /// <summary>
+        /// This function will Return a List containing all datablob in this system of the type provided.
+        /// </summary>
+        /// <typeparam name="T">DataBlobType</typeparam>
+        /// <param name="dataBlobIndex">The index of the Datablob (the datablobs index specifies its type).</param>
+        /// <returns>A list of DataBlobs</returns>
+        public T GetDataBlobList<T>(int dataBlobIndex)
+        {
+            return (T)_dataBlobLists[dataBlobIndex];
+        }
+
+        // Same as GetDataBlobList<T>() but it returns a IList interface. used when iterating over the _dataBlobLists
+        // so we dont have to cast to IList all the time.
+        private IList GetDataBlobIList(int dataBlobIndex)
+        {
+            return (IList)_dataBlobLists[dataBlobIndex];
+        }
+
+        // master list of entites, mainly used to controll assignment of Ids.
+        public List<DataEntity> AllEntities = new List<DataEntity>();      
+       // public List<RuinsDB> Ruins = new List<RuinsDB>();
+       // public List<TemperatureDB> Temperatures = new List<TemperatureDB>();
+
+        public Guid Id
+        {
+            get;
+            set;
+        }
+
+        public string Name
+        {
+            get;
+            set;
+        }
 
         public StarSystem()
             : base()
         {
-
+            Name = "";
+            Id = Guid.NewGuid();
         }
 
         public StarSystem(SerializationInfo info, StreamingContext context)
-            : base(info, context) 
         {
+            Id = (Guid)info.GetValue("ID", typeof(Guid));
+            Name = (string)info.GetValue("Name", typeof(string));
 
+            // when we are de-serialized in we want to add ourselves to the game state.
+            GameState.StarSystems.Add(this);
         }
 
-        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            base.GetObjectData(info, context);
-
-            // when we are serialized in we want to add ourselves to the game state.
-            GameState.StarSystems.Add(this);
+            info.AddValue("ID", Id, typeof(Guid));
+            info.AddValue("Name", Name, typeof(RuinsDB));
         }
 
         public void AddNewEntity(DataEntity entity)
         {
+            if (entity == null)
+                throw new System.NullReferenceException("Cannot add new null entity to a Star System.");
+
             // first lets find an index for it:
             int newIndex = FindFreeIndex();
             if (newIndex < 0)
             {
                 // no free space, allocate new:
                 AllEntities.Add(entity);
-                entity.ComponentIndex = AllEntities.Count - 1;
+                entity.DataBlobsIndex = AllEntities.Count - 1;
 
-                // allocate new components:
-                Ruins.Add(new RuinsComponent());
-                Temperatures.Add(new TemperatureComponent());
+                // we need to allocate space in the datablobs lists for the componetents:
+                for (int i = 0; i < _dataBlobLists.Count; ++i)
+                    GetDataBlobIList(i).Add(null);              // set to null as we don't know which to init.
             }
             else
             {
-                entity.ComponentIndex = newIndex;
                 AllEntities[newIndex] = entity;
+                entity.DataBlobsIndex = newIndex;
             }
+
+            entity.Owner = this;
         }
 
         public void MoveEntity(DataEntity entity)
@@ -60,20 +107,30 @@ namespace EntityTests
             int newIndex = FindFreeIndex();
             if (newIndex < 0)  // if no free index then we will need to add it to then end of the list.
             {
-                // there is no free space, add to the end:
-                Ruins.Add(entity.Owner.Ruins[entity.ComponentIndex]);
-                Temperatures.Add(entity.Owner.Temperatures[entity.ComponentIndex]);
+                for (int i = 0; i < _dataBlobLists.Count; ++i)
+                {
+                    GetDataBlobIList(i).Add(entity.Owner.GetDataBlobIList(i)[entity.DataBlobsIndex]);
+                }
+
+                    // there is no free space, add to the end:
+                    //Ruins.Add(entity.Owner.GetDataBlobList<List<RuinsDB>>(DataBlobIndex.RuinsDB)[entity.ComponentIndex]);
+                // Temperatures.Add(entity.Owner.GetDataBlobList<List<TemperatureDB>>(DataBlobIndex.TemperatureDB)[entity.ComponentIndex]);
                 //... and so on for all component types???
 
-                entity.ComponentIndex = AllEntities.Count - 1;
+                entity.DataBlobsIndex = AllEntities.Count - 1;
             }
             else
             {
+                for (int i = 0; i < _dataBlobLists.Count; ++i)
+                {
+                    GetDataBlobIList(i)[newIndex] = entity.Owner.GetDataBlobIList(i)[entity.DataBlobsIndex];
+                    entity.Owner.GetDataBlobIList(i)[entity.DataBlobsIndex] = null; // signal unused
+                }
                 // add to specified index:
-                Ruins[newIndex] = entity.Owner.Ruins[entity.ComponentIndex];
-                Temperatures[newIndex] = entity.Owner.Temperatures[entity.ComponentIndex];
+                //Ruins[newIndex] = entity.Owner.Ruins[entity.ComponentIndex];
+                //Temperatures[newIndex] = entity.Owner.Temperatures[entity.ComponentIndex];
 
-                entity.ComponentIndex = newIndex;
+                entity.DataBlobsIndex = newIndex;
             }
 
             entity.Owner.RemoveEntity(entity);

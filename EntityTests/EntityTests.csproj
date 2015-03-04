@@ -46,8 +46,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GameState.cs" />
-    <Compile Include="IComponent.cs" />
-    <Compile Include="IDataEntity.cs" />
+    <Compile Include="DataBlob.cs" />
+    <Compile Include="DataEntity.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StarSystem.cs" />

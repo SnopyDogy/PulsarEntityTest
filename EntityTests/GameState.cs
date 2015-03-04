@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace EntityTests
 {
-    public static class GameState
+    static class GameState
     {
         public static List<StarSystem> StarSystems = new List<StarSystem>();
 
