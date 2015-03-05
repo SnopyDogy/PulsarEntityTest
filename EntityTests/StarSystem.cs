@@ -14,8 +14,8 @@ namespace EntityTests
         // This list stores one list for each type of data blob:
         private ArrayList _dataBlobLists = new ArrayList()
         {
-            { new List<RuinsDB>() },
-            { new List<TemperatureDB>() }
+            { new Dictionary<DataEntity, RuinsDB>() },
+            { new Dictionary<DataEntity, TemperatureDB>() }
         };
 
         /// <summary>
@@ -24,19 +24,19 @@ namespace EntityTests
         /// <typeparam name="T">DataBlobType</typeparam>
         /// <param name="dataBlobIndex">The index of the Datablob (the datablobs index specifies its type).</param>
         /// <returns>A list of DataBlobs</returns>
-        public T GetDataBlobList<T>(int dataBlobIndex)
+        public T GetDataBlobDict<T>(int dataBlobIndex)
         {
             return (T)_dataBlobLists[dataBlobIndex];
         }
 
         // Same as GetDataBlobList<T>() but it returns a IList interface. used when iterating over the _dataBlobLists
-        // so we dont have to cast to IList all the time.
-        private IList GetDataBlobIList(int dataBlobIndex)
+        // so we dont have to cast to IDictionary all the time.
+        private IDictionary GetDataBlobIDictionary(int dataBlobIndex)
         {
-            return (IList)_dataBlobLists[dataBlobIndex];
+            return (IDictionary)_dataBlobLists[dataBlobIndex];
         }
 
-        // master list of entites, mainly used to controll assignment of Ids.
+        // master list of entites
         public List<DataEntity> AllEntities = new List<DataEntity>();      
 
         public Guid Id
@@ -78,72 +78,20 @@ namespace EntityTests
             if (entity == null)
                 throw new System.NullReferenceException("Cannot add new null entity to a Star System.");
 
-            // first lets find an index for it:
-            int newIndex = FindFreeIndex();
-            if (newIndex < 0)
-            {
-                // no free space, allocate new:
-                AllEntities.Add(entity);
-                entity.DataBlobsIndex = AllEntities.Count - 1;
-
-                // we need to allocate space in the datablobs lists for the componetents:
-                for (int i = 0; i < _dataBlobLists.Count; ++i)
-                    GetDataBlobIList(i).Add(null);              // set to null as we don't know which to init.
-            }
-            else
-            {
-                AllEntities[newIndex] = entity;
-                entity.DataBlobsIndex = newIndex;
-            }
-
+            AllEntities.Add(entity);
             entity.Owner = this;
         }
 
         public void MoveEntity(DataEntity entity)
         {
-            // first lets find an index for it:
-            int newIndex = FindFreeIndex();
-            if (newIndex < 0)  // if no free index then we will need to add it to then end of the list.
-            {
-                for (int i = 0; i < _dataBlobLists.Count; ++i)
-                {
-                    GetDataBlobIList(i).Add(entity.Owner.GetDataBlobIList(i)[entity.DataBlobsIndex]);
-                }
-
-                entity.DataBlobsIndex = AllEntities.Count - 1;
-            }
-            else
-            {
-                for (int i = 0; i < _dataBlobLists.Count; ++i)
-                {
-                    GetDataBlobIList(i)[newIndex] = entity.Owner.GetDataBlobIList(i)[entity.DataBlobsIndex];
-                    entity.Owner.GetDataBlobIList(i)[entity.DataBlobsIndex] = null; // signal unused
-                }
-
-                entity.DataBlobsIndex = newIndex;
-            }
-
             entity.Owner.RemoveEntity(entity);
+            AllEntities.Add(entity);
             entity.Owner = this;
         }
 
         public void RemoveEntity(DataEntity entity)
         {
-            int index = AllEntities.IndexOf(entity);
-            AllEntities[index] = null;      // this has the effect of removing the item but leaving its place to be resuesd.
-        }
-
-        private int FindFreeIndex()
-        {
-            for (int i = 0; i < AllEntities.Count; ++i)
-            {
-                if (AllEntities[i] == null)
-                {
-                    return i;
-                }
-            }
-
-            return -1;
+            AllEntities.Remove(entity);
         }
     }
 }
